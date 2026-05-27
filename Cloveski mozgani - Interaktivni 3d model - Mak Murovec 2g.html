@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D možgani - interaktivna predstavitev</title>
+
+  <script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
+
+  <style>
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,0.35), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(124,58,237,0.35), transparent 30%),
+        radial-gradient(circle at center, #111827 0%, #020617 70%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
+      background-size: 34px 34px;
+      opacity: 0.18;
+    }
+
+    .header {
+      position: relative;
+      z-index: 2;
+      padding: 14px 20px 12px;
+      background: rgba(15,23,42,0.72);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,0.18);
+      box-sizing: border-box;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: -0.5px;
+      color: #f8fafc;
+      text-shadow:
+        0 0 10px rgba(255,255,255,0.15),
+        0 0 25px rgba(96,165,250,0.15);
+    }
+
+    .brain-icon {
+      filter: drop-shadow(0 0 8px rgba(96,165,250,0.8));
+    }
+
+    .header p {
+      margin: 7px 0 0 0;
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .mission {
+      margin-top: 7px !important;
+      padding: 0;
+      background: none;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
+      color: #f8fafc !important;
+      font-size: 13px !important;
+      line-height: 1.35;
+      text-shadow:
+        0 0 8px rgba(255,255,255,0.12),
+        0 0 18px rgba(96,165,250,0.12);
+    }
+
+    .header small {
+      display: block;
+      margin-top: 7px;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .header strong {
+      color: #ffffff;
+    }
+
+    .header a {
+      color: #c7d2fe;
+      text-decoration: none;
+      font-style: italic;
+    }
+
+    .header a:hover {
+      color: #ffffff;
+      text-decoration: underline;
+    }
+
+    .main-layout {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 360px;
+      gap: 12px;
+      height: calc(100vh - 195px);
+      padding: 12px;
+      box-sizing: border-box;
+    }
+
+    .card,
+    .legend-panel {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: rgba(15,23,42,0.76);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 18px;
+      overflow: hidden;
+
+      box-shadow:
+        0 20px 45px rgba(0,0,0,0.32),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .card-title,
+    .legend-title {
+      padding: 12px 14px;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(30,41,59,0.92),
+          rgba(15,23,42,0.92)
+        );
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    .card-title small {
+      display: block;
+      margin-top: 4px;
+      color: #94a3b8;
+      font-weight: normal;
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .viewer-frame {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      background: #000;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      flex: 1;
+      border: 0;
+      background: #000000;
+      display: block;
+    }
+
+    .model-hint {
+      position: absolute;
+      left: 12px;
+      bottom: 12px;
+      z-index: 5;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.76);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: #dbeafe;
+      font-size: 11px;
+      pointer-events: none;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.35);
+    }
+
+    .legend-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 8px 10px;
+      background: rgba(2,6,23,0.35);
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .legend-chip {
+      flex: 1;
+      padding: 6px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .legend-chip.outer {
+      background: rgba(59,130,246,0.20);
+      color: #bfdbfe;
+      border: 1px solid rgba(96,165,250,0.35);
+    }
+
+    .legend-chip.section {
+      background: rgba(168,85,247,0.20);
+      color: #e9d5ff;
+      border: 1px solid rgba(192,132,252,0.35);
+    }
+
+    .legend {
+      padding: 10px;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      font-size: 11px;
+      line-height: 1.22;
+    }
+
+    .legend-group {
+      grid-column: 1 / -1;
+      margin: 6px 0 2px 0;
+      padding: 7px 9px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #ffffff;
+    }
+
+    .legend-group.outer {
+      background: linear-gradient(135deg, rgba(37,99,235,0.35), rgba(14,165,233,0.16));
+      border: 1px solid rgba(96,165,250,0.35);
+    }
+
+    .legend-group.section {
+      background: linear-gradient(135deg, rgba(124,58,237,0.35), rgba(217,70,239,0.16));
+      border: 1px solid rgba(192,132,252,0.35);
+    }
+
+    .legend-item {
+      position: relative;
+      color: #e5e7eb;
+      background:
+        linear-gradient(
+          135deg,
+          rgba(255,255,255,0.065),
+          rgba(255,255,255,0.025)
+        );
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 7px 7px 7px 36px;
+      border-radius: 10px;
+      transition: 0.22s ease;
+      min-height: 42px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    .legend-item::before {
+      content: attr(data-number);
+      position: absolute;
+      left: 7px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 18px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .legend-item.outer::before {
+      background: linear-gradient(135deg, #2563eb, #0ea5e9);
+      box-shadow: 0 0 12px rgba(59,130,246,0.45);
+    }
+
+    .legend-item.section::before {
+      background: linear-gradient(135deg, #7c3aed, #d946ef);
+      box-shadow: 0 0 12px rgba(168,85,247,0.45);
+    }
+
+    .legend-item.outer:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, rgba(37,99,235,0.26), rgba(14,165,233,0.16));
+      border-color: rgba(96,165,250,0.55);
+    }
+
+    .legend-item.section:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, rgba(124,58,237,0.26), rgba(217,70,239,0.16));
+      border-color: rgba(192,132,252,0.55);
+    }
+
+    .legend-item strong {
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .legend-item em {
+      color: #cbd5e1;
+      font-size: 10px;
+      margin-top: 2px;
+    }
+
+    .legend-item.outer.active {
+      background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
+      color: white;
+      border-color: rgba(191,219,254,0.9);
+      box-shadow:
+        0 0 12px rgba(59,130,246,0.8),
+        0 0 32px rgba(14,165,233,0.45);
+      transform: scale(1.025);
+    }
+
+    .legend-item.section.active {
+      background: linear-gradient(135deg, #7c3aed, #d946ef) !important;
+      color: white;
+      border-color: rgba(233,213,255,0.9);
+      box-shadow:
+        0 0 12px rgba(168,85,247,0.8),
+        0 0 32px rgba(217,70,239,0.45);
+      transform: scale(1.025);
+    }
+
+    .legend-item.active::before {
+      background: #ffffff;
+      color: #2563eb;
+      box-shadow: 0 0 14px rgba(255,255,255,0.8);
+    }
+
+    .legend-item.section.active::before {
+      color: #7c3aed;
+    }
+
+    .legend-item.active em {
+      color: #ffffff;
+    }
+
+    .legend-note {
+      padding: 8px 12px 11px;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.35;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      background: rgba(2,6,23,0.38);
+    }
+
+    @media (max-width: 1200px) {
+      html, body {
+        overflow: auto;
+      }
+
+      .main-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+
+      .card {
+        height: 72vh;
+      }
+
+      .legend-panel {
+        min-height: 520px;
+        margin-bottom: 12px;
+      }
+
+      .legend {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .legend {
+        grid-template-columns: 1fr;
+      }
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+
+    <h1>
+      <span class="brain-icon">🧠</span>
+      Interaktivna 3D predstavitev človeških možganov
+    </h1>
+
+    <p class="mission">
+      🎯 Raziskuj zgradbo človeških možganov in spoznaj pomembne anatomske strukture s pomočjo interaktivnih 3D modelov.
+    </p>
+
+    <p>
+      Levo (na računalniku) oziroma zgoraj (na telefonu) je 3D model zunanje anatomije možganov.
+      V sredini je 3D anatomski model možganov v prerezu.
+      Desno oziroma spodaj je interaktivna legenda: modre oznake so vezane na zunanji pogled, vijolične oznake pa na prerez možganov.
+    </p>
+
+    <small>
+      <strong>Pripravil:</strong>
+      Mak Murovec
+
+      ||
+
+      <strong>Viri:</strong>
+
+      <a href="https://sketchfab.com/3d-models/whole-brain-with-gross-anatomy-annotations-f390b7e894d2446789e5a0b89d4abe8d" target="_blank">
+        3D človeški možgani - zunanji pogled
+      </a>
+
+      ||
+
+      <a href="https://sketchfab.com/3d-models/hemisected-brain-7616eaf43292459d824636197333b6df" target="_blank">
+        3D človeški možgani - vzdolžni prerez
+      </a>
+
+      ||
+
+      <strong>Tehnologija prikaza:</strong>
+      Sketchfab Web Viewer
+
+      ||
+
+      <strong>Pomoč pri izdelavi (ikone, prevodi):</strong>
+
+      <a href="https://chat.openai.com" target="_blank">
+        ChatGPT
+      </a>
+	  
+	  ||
+	   
+	  <a href="https://translate.google.com/" target="_blank">
+        Google Translate
+      </a>
+	  
+	  
+    </small>
+
+  </div>
+
+  <div class="main-layout">
+
+    <div class="card">
+
+      <div class="card-title">
+        🔬 Človeški možgani - zunanji pogled
+
+        <small>
+          Označena zunanja anatomija možganov
+        </small>
+      </div>
+
+      <div class="viewer-frame">
+
+        <iframe
+          id="outer-frame"
+          title="Whole brain with gross anatomy annotations"
+          allowfullscreen
+          mozallowfullscreen="true"
+          webkitallowfullscreen="true"
+          allow="autoplay; fullscreen; xr-spatial-tracking">
+        </iframe>
+
+        <div class="model-hint">
+          Modre oznake: zunanji pogled
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="card">
+
+      <div class="card-title">
+        🧩 Človeški možgani - vzdolžni prerez
+
+        <small>
+          Označene notranje strukture možganov
+        </small>
+      </div>
+
+      <div class="viewer-frame">
+
+        <iframe
+          id="section-frame"
+          title="Hemisektirani možgani"
+          allowfullscreen
+          mozallowfullscreen="true"
+          webkitallowfullscreen="true"
+          allow="autoplay; fullscreen; xr-spatial-tracking">
+        </iframe>
+
+        <div class="model-hint">
+          Vijolične oznake: vzdolžni prerez
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="legend-panel">
+
+      <div class="legend-title">
+        📚 Skupna legenda / anatomski izrazi
+      </div>
+
+      <div class="legend-tabs">
+        <div class="legend-chip outer">Modro: zunanji pogled</div>
+        <div class="legend-chip section">Vijolično: prerez</div>
+      </div>
+
+      <div class="legend">
+
+        <div class="legend-group outer">
+          🔬 Zunanji pogled možganov
+        </div>
+
+        <div class="legend-item outer" data-model="outer" data-id="0" data-number="Z1">
+		  <strong>Arahnoidna ovojnica</strong>
+		  <em>Arachnoidea mater</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="1" data-number="Z2">
+		  <strong>Vzdolžna možganska razpoka</strong>
+		  <em>Fissura longitudinalis cerebri</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="2" data-number="Z3">
+		  <strong>Centralni žleb</strong>
+		  <em>Sulcus centralis</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="3" data-number="Z4">
+		  <strong>Stranski žleb</strong>
+		  <em>Sulcus lateralis</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="4" data-number="Z5">
+		  <strong>Sprednji krak stranskega žleba</strong>
+		  <em>Ramus anterior sulci lateralis</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="5" data-number="Z6">
+		  <strong>Naraščajoči krak stranskega žleba</strong>
+		  <em>Ramus ascendens sulci lateralis</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="6" data-number="Z7">
+		  <strong>Zadnji krak stranskega žleba</strong>
+		  <em>Ramus posterior sulci lateralis</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="7" data-number="Z8">
+		  <strong>Čelni reženj</strong>
+		  <em>Lobus frontalis</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="8" data-number="Z9">
+		  <strong>Temenski reženj</strong>
+		  <em>Lobus parietalis</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="9" data-number="Z10">
+		  <strong>Senčni reženj</strong>
+		  <em>Lobus temporalis</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="10" data-number="Z11">
+		  <strong>Zatilni reženj</strong>
+		  <em>Lobus occipitalis</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="11" data-number="Z12">
+		  <strong>Vohalni trakt</strong>
+		  <em>Tractus olfactorius</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="12" data-number="Z13">
+		  <strong>Vidni živec</strong>
+		  <em>Nervus opticus</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="13" data-number="Z14">
+		  <strong>Optična kiazma</strong>
+		  <em>Chiasma opticum</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="14" data-number="Z15">
+		  <strong>Vidni trakt</strong>
+		  <em>Tractus opticus</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="15" data-number="Z16">
+		  <strong>Notranja karotidna arterija</strong>
+		  <em>Arteria carotis interna</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="16" data-number="Z17">
+		  <strong>Most</strong>
+		  <em>Pons</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="17" data-number="Z18">
+		  <strong>Podaljšana hrbtenjača</strong>
+		  <em>Medulla oblongata</em>
+		</div>
+
+		<div class="legend-item outer" data-model="outer" data-id="18" data-number="Z19">
+		  <strong>Mali možgani</strong>
+		  <em>Cerebellum</em>
+		</div>
+
+        <div class="legend-group section">
+          🧩 Vzdolžni prerez možganov
+        </div>
+
+        <div class="legend-item section" data-model="section" data-id="0" data-number="P1">
+		  <strong>Možganska hemisfera</strong>
+		  <em>Hemispherium cerebri</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="1" data-number="P2">
+		  <strong>Cingulatna vijuga</strong>
+		  <em>Gyrus cinguli</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="2" data-number="P3">
+		  <strong>Kalozno telo (prečnik)</strong>
+		  <em>Corpus callosum</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="3" data-number="P4">
+		  <strong>Prozorna pregrada</strong>
+		  <em>Septum pellucidum</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="4" data-number="P5">
+		  <strong>Obok</strong>
+		  <em>Fornix</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="5" data-number="P6">
+		  <strong>Hipofiza</strong>
+		  <em>Hypophysis cerebri</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="6" data-number="P7">
+		  <strong>Otok</strong>
+		  <em>Insula</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="7" data-number="P8">
+		  <strong>Putamen</strong>
+		  <em>Putamen</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="8" data-number="P9">
+		  <strong>Bleda krogla</strong>
+		  <em>Globus pallidus</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="9" data-number="P10">
+		  <strong>Amigdala</strong>
+		  <em>Amygdala</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="10" data-number="P11">
+		  <strong>Vidni živec</strong>
+		  <em>Nervus opticus</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="11" data-number="P12">
+		  <strong>Talamus</strong>
+		  <em>Thalamus</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="12" data-number="P13">
+		  <strong>Repato jedro</strong>
+		  <em>Nucleus caudatus</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="13" data-number="P14">
+		  <strong>Sprednja komisura</strong>
+		  <em>Commissura anterior</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="14" data-number="P15">
+		  <strong>Epifiza (češerika)</strong>
+		  <em>Corpus pineale</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="15" data-number="P16">
+		  <strong>Amigdala</strong>
+		  <em>Amygdala</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="16" data-number="P17">
+		  <strong>Horioidni pletež</strong>
+		  <em>Plexus choroideus</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="17" data-number="P18">
+		  <strong>Medularna proga talamusa</strong>
+		  <em>Stria medullaris thalami</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="18" data-number="P19">
+		  <strong>Hipokampus</strong>
+		  <em>Hippocampus</em>
+		</div>
+
+		<div class="legend-item section" data-model="section" data-id="19" data-number="P20">
+		  <strong>Mamilarna telesca</strong>
+		  <em>Corpus mamillare</em>
+		</div>
+
+      </div>
+
+      <div class="legend-note">
+        Klik na oznako na modelu označi pripadajoči izraz v skupni legendi.
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    function clearLegendSelection() {
+      document.querySelectorAll('.legend-item')
+        .forEach(function(item) {
+          item.classList.remove('active');
+        });
+    }
+
+    function activateLegend(modelName, index) {
+      clearLegendSelection();
+
+      const activeItem =
+        document.querySelector(
+          '.legend-item[data-model="' + modelName + '"][data-id="' + index + '"]'
+        );
+
+      if (activeItem) {
+        activeItem.classList.add('active');
+
+        activeItem.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      }
+    }
+
+    function setupSketchfabViewer(frameId, modelUid, modelName) {
+      const iframe = document.getElementById(frameId);
+      const client = new Sketchfab('1.12.1', iframe);
+
+      client.init(modelUid, {
+        autostart: 1,
+        ui_infos: 0,
+        ui_controls: 1,
+        ui_watermark: 0,
+        ui_theme: 'dark',
+
+        success: function(api) {
+          api.start();
+
+          api.addEventListener('viewerready', function() {
+            api.addEventListener('annotationFocus', function(index) {
+              activateLegend(modelName, index);
+            });
+          });
+        },
+
+        error: function() {
+          console.log('Napaka pri nalaganju Sketchfab modela: ' + modelName);
+        }
+      });
+    }
+
+    setupSketchfabViewer(
+      'outer-frame',
+      'f390b7e894d2446789e5a0b89d4abe8d',
+      'outer'
+    );
+
+    setupSketchfabViewer(
+      'section-frame',
+      '7616eaf43292459d824636197333b6df',
+      'section'
+    );
+
+  </script>
+
+</body>
+</html>
